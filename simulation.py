@@ -35,23 +35,28 @@ def advance_dt(cell,params):
     next_cell['RB'] += drb
     next_cell['RB conc'] = next_cell['RB'] / next_cell['Size']
     
-    if cell['Phase'].values[0] == 'G2':
+    if cell['Phase'] == 'G2':
         
         # check division
         if division(cell,params):
+            print('Divided at time ',str(next_cell.Time))
             next_cell['RB'] = np.nan
             next_cell['Size'] = np.nan
             next_cell['RB conc'] = np.nan
             next_cell['Phase'] = 'None'
+            next_cell['Div time'] = cell['Time']
+            next_cell['Div size'] = cell['Size']
             
             return next_cell
             
-    elif cell['Phase'].values[0] == 'G1':
+    elif cell['Phase'] == 'G1':
         # check g1/s
         if g1s_transition(cell,params):
-            print('G1S transitioned')
+            print('G1S transitioned with RB_conc ',str(next_cell['RB conc']))
             next_cell['Phase'] = 'G2'
-            
+            next_cell['G1S time'] = cell['Time']
+            next_cell['G1S size'] = cell['Size']
+            next_cell['G1S RB conc'] = cell['RB conc']
     
     return next_cell
 
@@ -59,11 +64,11 @@ def advance_dt(cell,params):
 def rb_synthesis_lut(cell,params):
     from numpy.random import randn
     #@todo: build noise estimator + randn
-    if cell['Phase'].values == 'G1':
+    if cell['Phase'] == 'G1':
         m = params.loc['RB','G1 m']
         b = params.loc['RB','G1 b']
         sigma = np.sqrt(params.loc['RB','G1 msr'])
-    elif cell['Phase'].values == 'G2':
+    elif cell['Phase'] == 'G2':
         m = params.loc['RB','SG2 m']
         b = params.loc['RB','SG2 b']
         sigma = np.sqrt(params.loc['RB','SG2 msr'])
@@ -71,11 +76,11 @@ def rb_synthesis_lut(cell,params):
 
 def size_synthesis_lut(cell,params):
     from numpy.random import randn
-    if cell['Phase'].values == 'G1':
+    if cell['Phase'] == 'G1':
         m = params.loc['Size','G1 m']
         b = params.loc['Size','G1 b']
         sigma = np.sqrt(params.loc['Size','G1 msr'])
-    elif cell['Phase'].values == 'G2':
+    elif cell['Phase'] == 'G2':
         m = params.loc['Size','SG2 m']
         b = params.loc['Size','SG2 b']
         sigma = np.sqrt(params.loc['Size','SG2 msr'])
@@ -86,43 +91,38 @@ def g1s_transition(cell,params):
     
     transitioned = False
     
-    if cell['Phase'].values == 'G1':
+    if cell['Phase'] == 'G1':
         # @todo: build logit lookup table baesed on [RB]
         rb_conc = cell['RB'] / cell['Size']
         m = params.loc['RB conc']['G1S trans m']
         b = params.loc['RB conc']['G1S trans b']
         p = np.polyval([m,b], rb_conc)
         
-        q = random.rand(1)[0]
+        q = random.rand() # Metropolis acceptance
         if q < p:
             transitioned = True
         else:
             transitioned = False
-    elif cell['Phase'].values == 'G2':
+    elif cell['Phase'] == 'G2':
         transitioned = True
+        
         
     return transitioned
 
 def division(cell,params):
     # @todo: currently don't implement daughters div == death
+    # Use timer for G2 duration -- need to extractt timing params
     
-    if cell['Size'].values > cell['Birth size'].values/2:
+    mean_g2 = params.loc['Time','Mean G2 duration']
+    std_g2 = params.loc['Time','Std G2 duration']
+    
+    q = random.normal(loc=mean_g2,scale=std_g2)
+    g2_duration = cell.Time - cell['G1S time']
+    
+    if g2_duration > q:
         return True
     else:
         return False
 
 
-def mc_accept(prob_lut,trial_value):
-    """
-    Accept or reject the current trial_value given the probability density LUT
-    (assuming near-analytic resolution ala KDE estimates)
-    
-    """
-    from numpy.random import rand # Uniform [0,1]
-    
-    p = rand(1)[0]
-    
-    prob_lut
-    # I = find_nearest_idx(prob_lut,trial_value)
-    
-    return p < I # acceptance rate
+

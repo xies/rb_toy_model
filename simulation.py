@@ -37,7 +37,7 @@ class Cell():
         
         self.cellID = cellID
         # ts -- time series
-        self.ts = pd.DataFrame( columns = ['Time','Size','RB','RB conc','Phase'],
+        self.ts = pd.DataFrame( columns = ['Time','Birth time','Size','RB','RB conc','Phase'],
                             index=pd.RangeIndex( sim_clock['Max frame'] ), dtype=np.float)
         # scalar results of siulation
         self.birth_size = np.nan
@@ -67,9 +67,9 @@ class Cell():
             g1s_size = random.lognormal(mean = params.loc['Size','Mean G1S'],sigma = params.loc['Size','Std G1S'])
             g1s_rb = random.lognormal(mean = params.loc['RB','Mean G1S'],sigma = params.loc['RB','Std G1S'])
             rb_conc = g1s_rb / g1s_size
-            b_time = sim_clock['Current time']
             
-            init_cell = pd.Series({'Time':b_time,'Size':g1s_size,'RB':g1s_rb,'RB conc':rb_conc,'Phase':'G2'})
+            init_cell = pd.Series({'Time':sim_clock['Current time'],'Birth time':0,
+                                   'Size':g1s_size,'RB':g1s_rb,'RB conc':rb_conc,'Phase':'G2'})
             self.parentID = np.nan
             self.g1s_time = g1s_size
             self.g1s_frame = sim_clock['Current frame']
@@ -80,11 +80,11 @@ class Cell():
         else: # Create daughter cell via symmetric dividion (ignores params)
             #NB: the "halving" is taken care of in @divide function
             init_size = mother.div_size * inheritance
-            init_rb = mother.div_size * inheritance
+            init_rb = mother.div_rb * inheritance
             rb_conc = init_rb / init_size
-            b_time = sim_clock['Current time']
             
-            init_cell = pd.Series({'Time':b_time,'Size':init_size,'RB':init_rb,'RB conc':rb_conc,'Phase':'G1'})
+            init_cell = pd.Series({'Time':sim_clock['Current time'],'Birth time':0,
+                                   'Size':init_size,'RB':init_rb,'RB conc':rb_conc,'Phase':'G1'})
             self.parentID = mother.cellID
             self.birth_size = init_size
             self.birth_frame = sim_clock['Current frame']
@@ -155,6 +155,7 @@ class Cell():
         # Initialize current cell's values as pd.Series from prev. time point
         current_values = prev_values.copy()
         current_values['Time'] += clock['dt']
+        current_values['Birth time'] += clock['dt']
         
         # First calculate growths based on previous values
         drb = self.rb_synthesis_lut(prev_frame,params)

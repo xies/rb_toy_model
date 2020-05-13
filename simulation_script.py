@@ -67,7 +67,7 @@ for t in np.arange(sim_clock['Max frame'] - 1):
     sim_clock['Current time'] += sim_clock['dt']
     
     newly_borns = {}
-    for this_cell in population.itervalues():
+    for this_cell in population.values():
         
         # Skip cell if divided already
         if this_cell.divided:
@@ -90,27 +90,29 @@ for t in np.arange(sim_clock['Max frame'] - 1):
              
 #%% Retrieve each datafield into dataframe
         
-btime = np.vstack( [ cell.ts['Birth time'].astype(np.float) for cell in population.itervalues() ])
-size = np.vstack( [ cell.ts['Size'].astype(np.float) for cell in population.itervalues() ])
-rb = np.vstack( [ cell.ts['RB'].astype(np.float) for cell in population.itervalues() ])
-rb_conc = np.vstack( [ cell.ts['RB conc'].astype(np.float) for cell in population.itervalues() ])
+btime = np.vstack( [ cell.ts['Birth time'].astype(np.float) for cell in population.values() ])
+size = np.vstack( [ cell.ts['Size'].astype(np.float) for cell in population.values() ])
+rb = np.vstack( [ cell.ts['RB'].astype(np.float) for cell in population.values() ])
+rb_conc = np.vstack( [ cell.ts['RB conc'].astype(np.float) for cell in population.values() ])
 
 
 
-birth_size = np.array([ cell.birth_size for cell in population.itervalues() ])
-birth_rb = np.array([ cell.birth_rb for cell in population.itervalues() ])
-g1s_rb_conc = np.array([ cell.g1s_rb_conc for cell in population.itervalues() ])
-g1s_size = np.array([ cell.g1s_size for cell in population.itervalues() ])
-div_size = np.array([ cell.div_size for cell in population.itervalues() ])
-g1s_duration = np.array([ cell.g1s_time - cell.birth_time for cell in population.itervalues() ])
-div_duration = np.array([ cell.div_time - cell.birth_time for cell in population.itervalues() ])
+birth_size = np.array([ cell.birth_size for cell in population.values() ])
+birth_rb = np.array([ cell.birth_rb for cell in population.values() ])
+g1s_rb_conc = np.array([ cell.g1s_rb_conc for cell in population.values() ])
+g1s_size = np.array([ cell.g1s_size for cell in population.values() ])
+div_size = np.array([ cell.div_size for cell in population.values() ])
+g1s_duration = np.array([ cell.g1s_time - cell.birth_time for cell in population.values() ])
+div_duration = np.array([ cell.div_time - cell.birth_time for cell in population.values() ])
 
 
-birth_time = np.array([ cell.birth_time for cell in population.itervalues() ])
+birth_time = np.array([ cell.birth_time for cell in population.values() ])
 
 
 
+#%% Plotting
 
+plt.plot(btime.T,rb_conc.T); plt.xlabel('Birth time (h)'); plt.ylabel('RB conc')
 
 
 

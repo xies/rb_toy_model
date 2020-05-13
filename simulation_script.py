@@ -15,9 +15,12 @@ import statsmodels.api as sm
 import simulation
 
 # 1) Initial conditions / parameters
-Ncells = 10
+Ncells = 5
 max_iter = 200
 dt = 1/6. # in hours
+
+print(max_iter, ' iterations = ', max_iter * dt / 24, 'days')
+print('Expected final population size: ', Ncells * 2**( max_iter * dt / 15))
 
 emparams = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/emp_parameters.pkl')
 trans_params = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/trans_params.pkl')
@@ -33,10 +36,8 @@ sim_clock['Max frame'] = max_iter
 sim_clock['Max time'] = max_iter * dt
 sim_clock['dt'] = dt
 
-#%%
-# @todo: initialize ag G1/S
-# Initialize each cell as a DataFrame
-# population is handled currently as a list of DFs
+#%% Initialize
+# Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
 
 
 sim_clock['Current time'] = 0
@@ -52,14 +53,13 @@ for i in range(Ncells):
     
 initial_pop = population.copy()
 
-#%%
+#%% 2. Simulation steps
 
 next_cellID = len(initial_pop)
 population = initial_pop.copy()
 sim_clock['Current time'] = 0
 sim_clock['Current frame'] = 0
 
-# Start stimulation
 for t in np.arange(sim_clock['Max frame'] - 1):
     
     # Advance time step by one
@@ -90,6 +90,7 @@ for t in np.arange(sim_clock['Max frame'] - 1):
              
 #%% Retrieve each datafield into dataframe
         
+btime = np.vstack( [ cell.ts['Birth time'].astype(np.float) for cell in population.itervalues() ])
 size = np.vstack( [ cell.ts['Size'].astype(np.float) for cell in population.itervalues() ])
 rb = np.vstack( [ cell.ts['RB'].astype(np.float) for cell in population.itervalues() ])
 rb_conc = np.vstack( [ cell.ts['RB conc'].astype(np.float) for cell in population.itervalues() ])

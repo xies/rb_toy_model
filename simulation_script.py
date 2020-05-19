@@ -6,30 +6,36 @@ Created on Thu Jan 23 12:16:39 2020
 @author: xies
 """
 
-
 import pandas as pd
 import numpy as np
+from numpy import random
 import seaborn as sb
 import matplotlib.pylab as plt
 import statsmodels.api as sm
 import simulation
+import copy
 
 # 1) Initial conditions / parameters
-Ncells = 5
-max_iter = 200
-dt = 1/6. # in hours
+Ncells = 10
+max_iter = 200 # in frames
+dt = 1/6. # in hours 
 
 print(max_iter, ' iterations = ', max_iter * dt / 24, 'days')
 print('Expected final population size: ', Ncells * 2**( max_iter * dt / 15))
 
-emparams = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/emp_parameters.pkl')
-trans_params = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/trans_params.pkl')
+# emparams = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/emp_parameters.pkl')
+# trans_params = pd.read_pickle('/Users/xies/Box/HMECs/RB toy model/trans_params.pkl')
 
-emparams = emparams.join(trans_params)
-emparams.at['RB conc','G1S trans m'] = trans_params.loc['RB conc','G1S trans m']
-emparams.at['RB conc','G1S trans b'] = trans_params.loc['RB conc','G1S trans b']
-emparams.at['Time','Mean G2 duration'] = trans_params.loc['Time','Mean G2 duration']
-emparams.at['Time','Std G2 duration'] = trans_params.loc['Time','Std G2 duration']
+# emparams = emparams.join(trans_params)
+# emparams.at['RB conc','G1S trans m'] = trans_params.loc['RB conc','G1S trans m']
+# emparams.at['RB conc','G1S trans b'] = trans_params.loc['RB conc','G1S trans b']
+# emparams.at['Time','Mean G2 duration'] = trans_params.loc['Time','Mean G2 duration']
+# emparams.at['Time','Std G2 duration'] = trans_params.loc['Time','Std G2 duration']
+
+'''
+Parameter sets should be given in hours and mean-divided quantities of RB or Size
+'''
+emparams = pd.read_csv('empirical_params.csv',index_col=0)
 
 sim_clock = {}
 sim_clock['Max frame'] = max_iter
@@ -38,7 +44,6 @@ sim_clock['dt'] = dt
 
 #%% Initialize
 # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
-
 
 sim_clock['Current time'] = 0
 sim_clock['Current frame'] = 0
@@ -51,12 +56,13 @@ for i in range(Ncells):
     population[i] = cell
     next_cellID += 1
     
-initial_pop = population.copy()
+# Deepcopy original
+initial_pop = copy.deepcopy(population)
 
 #%% 2. Simulation steps
 
 next_cellID = len(initial_pop)
-population = initial_pop.copy()
+population = copy.deepcopy(initial_pop)
 sim_clock['Current time'] = 0
 sim_clock['Current frame'] = 0
 
@@ -78,8 +84,10 @@ for t in np.arange(sim_clock['Max frame'] - 1):
             
             if this_cell.divided:
                 # Newly divided cell: make daughter cells
-                print(this_cell.cellID, ' has divided at frame ', t)
-                daughters = this_cell.divide(next_cellID, sim_clock, asymmetry=0)
+                print(f'CellID #{this_cell.cellID} has divided at frame {t}')
+                # Randomly draw an asymmettry
+                a = np.abs( random.randn() * 0.05 ) # 5 percent
+                daughters = this_cell.divide(next_cellID, sim_clock, asymmetry=a)
                 next_cellID += 2
                 # Put daughters into the population
                 newly_borns[daughters[0].cellID] = daughters[0]
@@ -96,7 +104,6 @@ rb = np.vstack( [ cell.ts['RB'].astype(np.float) for cell in population.values()
 rb_conc = np.vstack( [ cell.ts['RB conc'].astype(np.float) for cell in population.values() ])
 
 
-
 birth_size = np.array([ cell.birth_size for cell in population.values() ])
 birth_rb = np.array([ cell.birth_rb for cell in population.values() ])
 g1s_rb_conc = np.array([ cell.g1s_rb_conc for cell in population.values() ])
@@ -109,9 +116,11 @@ div_duration = np.array([ cell.div_time - cell.birth_time for cell in population
 birth_time = np.array([ cell.birth_time for cell in population.values() ])
 
 
-
 #%% Plotting
 
+plt.figure()
+plt.plot(size.T); plt.xlabel('Birth time (h)'); plt.ylabel('Size')
+plt.figure()
 plt.plot(btime.T,rb_conc.T); plt.xlabel('Birth time (h)'); plt.ylabel('RB conc')
 
 
